@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Link Relay 设置</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:40px auto;padding:0 16px;color:#1e293b}
+  h1{font-size:20px}
+  fieldset{border:1px solid #e2e8f0;border-radius:10px;margin:16px 0;padding:14px 16px}
+  legend{font-weight:600;padding:0 6px}
+  label{display:block;margin:10px 0 4px;font-size:14px}
+  input[type=text],input[type=password]{width:100%;box-sizing:border-box;padding:8px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px}
+  .row{display:flex;align-items:center;gap:8px}
+  .hint{font-size:12px;color:#64748b;margin-top:4px}
+  button{background:#2563eb;color:#fff;border:0;border-radius:6px;padding:8px 18px;font-size:14px;cursor:pointer}
+  #status{margin-left:12px;color:#16a34a;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Link Relay 设置</h1>
+<div id="permBox" style="display:none;background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:12px 14px;font-size:14px">
+  需要授予“访问所有网站数据”的权限，扩展才能在网页中工作。
+  <button id="grant" style="margin-left:8px">授予权限</button>
+</div>
+<fieldset>
+  <legend>外部协议拦截</legend>
+  <div class="row"><input type="checkbox" id="blockProtocol"><label for="blockProtocol" style="margin:0">拦截除 http/https 外的外部应用跳转，并在右下角显示链接</label></div>
+  <div class="hint">修改后，已打开的页面需刷新或会自动生效（通常立即生效）。</div>
+</fieldset>
+<fieldset>
+  <legend>中转服务器（Google 登录中继 / Gmail 镜像）</legend>
+  <label for="server">服务器地址</label>
+  <input type="text" id="server" placeholder="https://your-relay.example.com">
+  <label for="apiKey">API Key</label>
+  <input type="password" id="apiKey" placeholder="API Secret" autocomplete="off">
+  <div class="hint">未填写时，OAuth 中继与 Gmail 镜像功能不会生效。</div>
+</fieldset>
+<button id="save">保存</button><span id="status"></span>
+<script src="options.js"></script>
+</body>
+</html>

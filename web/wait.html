@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google 跨浏览器登录中继 ({{.Code}})</title>
+<style>
+  body { margin: 0; background: #09090b; color: #f4f4f5; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .card { background: #18181b; border: 1px solid #3f3f46; border-radius: 14px; padding: 28px; width: 460px; max-width: 92vw; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+  .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .title { font-size: 17px; font-weight: 600; color: #60a5fa; }
+  .badge { font-size: 12px; background: #27272a; padding: 3px 10px; border-radius: 6px; color: #a1a1aa; font-family: monospace; }
+  .desc { font-size: 13.5px; color: #d4d4d8; line-height: 1.6; margin: 0 0 16px 0; }
+  .row { display: flex; gap: 8px; margin-bottom: 16px; }
+  input { flex: 1; background: #09090b; border: 1px solid #3f3f46; border-radius: 8px; padding: 10px 12px; color: #fff; font-size: 13.5px; font-family: monospace; outline: none; }
+  button.primary { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 0 16px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background 0.15s; }
+  button.primary:hover { background: #1d4ed8; }
+  .footer { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: #a1a1aa; }
+  button.link { background: transparent; border: none; color: #93c5fd; cursor: pointer; text-decoration: underline; font-size: 12px; padding: 0; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="title">🔐 Google 跨浏览器登录中继</span>
+      <span class="badge">配对码: {{.Code}}</span>
+    </div>
+    <p class="desc">请复制下方中继短链，在<b>已登录 Google 的主力浏览器</b>中打开并点选账号（本页面会自动跳转完成登录）：</p>
+    <div class="row">
+      <input id="short-input" type="text" readonly value="{{.ShortLink}}">
+      <button id="copy-btn" class="primary">复制短链</button>
+    </div>
+    <div class="footer">
+      <span id="status">⏳ 正在等待主力浏览器完成授权...</span>
+      <button id="copy-raw-btn" class="link">复制原始 Google 链接</button>
+    </div>
+  </div>
+<script>
+  const CODE = "{{.Code}}";
+  const SHORT_LINK = "{{.ShortLink}}";
+  const RAW_OAUTH = "{{.OAuthURL}}";
+  const POLL_TOKEN = "{{.PollToken}}";
+  const PREFIX = "__TM_BRIDGE__";
+
+  navigator.clipboard.writeText(SHORT_LINK).catch(() => {});
+
+  const copyBtn = document.getElementById("copy-btn");
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(SHORT_LINK);
+    copyBtn.textContent = "已复制 ✓";
+    copyBtn.style.background = "#16a34a";
+    setTimeout(() => { copyBtn.textContent = "复制短链"; copyBtn.style.background = "#2563eb"; }, 1500);
+  };
+
+  document.getElementById("copy-raw-btn").onclick = () => {
+    navigator.clipboard.writeText(RAW_OAUTH);
+    document.getElementById("copy-raw-btn").textContent = "已复制原始链接 ✓";
+  };
+
+  function restoreCallbackUrl(rawCallbackUrl) {
+    const u = new URL(rawCallbackUrl);
+    const regex = new RegExp("^" + PREFIX + "[^:]+:(.*)$");
+    if (u.searchParams.has("state")) {
+      const m = u.searchParams.get("state").match(regex);
+      if (m) {
+        if (m[1]) u.searchParams.set("state", m[1]);
+        else u.searchParams.delete("state");
+      }
+    }
+    if (u.hash && u.hash.length > 1) {
+      const hp = new URLSearchParams(u.hash.slice(1));
+      if (hp.has("state")) {
+        const m = hp.get("state").match(regex);
+        if (m) {
+          if (m[1]) hp.set("state", m[1]);
+          else hp.delete("state");
+          u.hash = "#" + hp.toString();
+        }
+      }
+    }
+    return u.toString();
+  }
+
+  const pollDeadline = Date.now() + 3 * 60 * 1000;
+  const timer = setInterval(async () => {
+    if (Date.now() >= pollDeadline) {
+      clearInterval(timer);
+      document.getElementById("status").textContent = "⏰ 配对超时（3分钟），请返回重试";
+      return;
+    }
+    try {
+      const res = await fetch("/oauth/poll?code=" + encodeURIComponent(CODE), {
+        headers: { "Authorization": "Bearer " + POLL_TOKEN }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.ready && data.callback_url) {
+        clearInterval(timer);
+        document.getElementById("status").textContent = "✅ 授权成功！正在跳转登录...";
+        window.location.replace(restoreCallbackUrl(data.callback_url));
+      }
+    } catch (e) {}
+  }, 800);
+</script>
+</body>
+</html>
